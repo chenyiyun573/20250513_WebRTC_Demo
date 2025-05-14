@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebRTC Viewer</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #e8f0fe; }
+        video { border: 1px solid black; background-color: #333; margin-bottom: 10px; }
+        #remoteVideo { width: 640px; height: 480px; }
+        button { padding: 10px 15px; margin-right: 10px; cursor: pointer; }
+        .container { background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebRTC Stream Viewer (Mac)</h1>
+        <p>Receives and displays the stream from the server.</p>
+        <video id="remoteVideo" autoplay playsinline></video><br/>
+        <button id="startButton">Start Viewing</button>
+        <button id="stopButton">Stop Viewing</button>
+        <p>Status: <span id="status">Idle</span></p>
+    </div>
+    <script src="/client.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            init('subscriber');
+        });
+    </script>
+</body>
+</html>
