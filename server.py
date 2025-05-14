@@ -162,29 +162,37 @@ async def websocket_handler(request):
                     answer_sdp = RTCSessionDescription(sdp=data["sdp"], type="answer")
                     await pc.setRemoteDescription(answer_sdp)
 
+# server.py - in websocket_handler
+# ... modified by troubleshooting 20250513 2140 CT
                 elif data["type"] == "candidate":
-                    candidate_json = data["candidate"]
-                    candidate_data = candidate_json if isinstance(candidate_json, dict) else json.loads(candidate_json)
-                    
-                    ice_candidate = RTCIceCandidate(
-                        foundation=candidate_data.get("foundation"),
-                        component=candidate_data.get("component"),
-                        protocol=candidate_data.get("protocol"),
-                        priority=candidate_data.get("priority"),
-                        address=candidate_data.get("address"),
-                        port=candidate_data.get("port"),
-                        type=candidate_data.get("type"),
-                        sdpMid=candidate_data.get("sdpMid"),
-                        sdpMLineIndex=candidate_data.get("sdpMLineIndex"),
-                        relatedAddress=candidate_data.get("relatedAddress"),
-                        relatedPort=candidate_data.get("relatedPort"),
-                        tcpType=candidate_data.get("tcpType")
-                    )
-                    try:
-                        await pc.addIceCandidate(ice_candidate)
-                    except Exception as e:
-                        logger.error(f"Error adding ICE candidate for {client_id}: {e} (Candidate: {candidate_data})")
-                
+                    logger.debug(f"Received candidate payload from {client_id}: {data['candidate']}")
+                    cand_payload = data["candidate"]  # This IS the object from event.candidate.toJSON()
+
+                    actual_candidate_string = cand_payload.get("candidate") # The "candidate:..." string
+                    sdp_mid = cand_payload.get("sdpMid")
+                    sdp_m_line_index = cand_payload.get("sdpMLineIndex")
+
+                    if actual_candidate_string:
+                        # Create an RTCIceCandidate descriptor.
+                        # Set its .candidate attribute to the full string, plus sdpMid and sdpMLineIndex.
+                        # aiortc's pc.addIceCandidate will then parse the .candidate string.
+                        ice_candidate_obj_for_aiortc = RTCIceCandidate(
+                            sdpMid=sdp_mid,
+                            sdpMLineIndex=sdp_m_line_index
+                        )
+                        ice_candidate_obj_for_aiortc.candidate = actual_candidate_string # Crucial step
+
+                        try:
+                            logger.debug(f"Adding ICE candidate for {client_id}: mid={ice_candidate_obj_for_aiortc.sdpMid}, lineIndex={ice_candidate_obj_for_aiortc.sdpMLineIndex}, cand='{ice_candidate_obj_for_aiortc.candidate}'")
+                            await pc.addIceCandidate(ice_candidate_obj_for_aiortc)
+                            logger.debug(f"Successfully added ICE candidate for {client_id}")
+                        except Exception as e_add_ice:
+                            logger.error(f"Error in pc.addIceCandidate for {client_id}: {e_add_ice}")
+                            logger.error(f"Problematic ICE candidate object: {vars(ice_candidate_obj_for_aiortc)}")
+                    else:
+                        logger.warning(f"Received candidate message from {client_id} without an actual 'candidate' string in the payload.")
+# ...
+
                 elif data["type"] == "hangup":
                     logger.info(f"Client {client_id} ({client_role}) initiated hangup.")
                     await cleanup_client_resources(pc, client_id, client_role, ws)
