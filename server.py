@@ -17,7 +17,7 @@ from aiortc import (
     RTCSessionDescription,
 )
 from aiortc.contrib.media import MediaRelay
-from aiortc.rtcicetransport import candidate_from_sdp
+from aiortc.sdp import candidate_from_sdp     # ← correct module
 import aioice   # for port‑range patch
 
 # ---------------------------------------------------------------------------
