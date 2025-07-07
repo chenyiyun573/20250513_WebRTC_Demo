@@ -16,6 +16,7 @@ from aiortc import (
     RTCPeerConnection,
     RTCSessionDescription,
 )
+from aiortc import RTCConfiguration, RTCIceServer
 from aiortc.contrib.media import MediaRelay
 from aiortc.sdp import candidate_from_sdp     # ← correct module
 import aioice   # for port‑range patch
@@ -78,11 +79,12 @@ async def websocket_handler(request: web.Request):
     await ws.prepare(request)
 
     client_id  = str(uuid.uuid4())
-    pc = RTCPeerConnection({
-        "iceServers": [
-            {"urls": "stun:stun.l.google.com:19302"}
-        ]
-    })
+    pc = RTCPeerConnection(
+        RTCConfiguration(iceServers=[
+            RTCIceServer(urls=["stun:stun.l.google.com:19302"])
+        ])  
+    )
+
 
     client_role: Optional[str] = None
 
