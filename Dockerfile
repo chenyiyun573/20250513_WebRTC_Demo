@@ -1,24 +1,26 @@
-# Use an official Python runtime as a parent image
 FROM python:3.9-slim
 
-# Set the working directory in the container
 WORKDIR /app
 
-# Copy the requirements file into the container at /app
-COPY requirements.txt .
+# Install system dependencies for aiortc (libopus, libvpx)
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    libsrtp2-dev \
+    libopus0 \
+    libvpx6 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install any needed packages specified in requirements.txt
+# Copy requirements first to use Docker cache for deps
+COPY requirements.txt requirements.txt
+
+# Install python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the current directory contents into the container at /app
-# This includes server.py, client.js, html files, and the certs directory
+# Copy the app code
 COPY . .
 
-# Make port 8080 available to the world outside this container for HTTPS
-EXPOSE 8080
+# Expose ports
+EXPOSE 8080/tcp
+EXPOSE 50000-50050/udp
 
-# Define environment variable (optional, for clarity or if needed by app)
-ENV NAME WebRTC Demo Server
-
-# Command to run the application
 CMD ["python", "server.py"]
