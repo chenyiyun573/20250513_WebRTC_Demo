@@ -78,7 +78,12 @@ async def websocket_handler(request: web.Request):
     await ws.prepare(request)
 
     client_id  = str(uuid.uuid4())
-    pc         = RTCPeerConnection()
+    pc = RTCPeerConnection({
+        "iceServers": [
+            {"urls": "stun:stun.l.google.com:19302"}
+        ]
+    })
+
     client_role: Optional[str] = None
 
     logger.info(f"WS client {client_id} connected")
