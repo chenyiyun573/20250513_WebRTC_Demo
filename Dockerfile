@@ -7,8 +7,9 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     libsrtp2-dev \
     libopus0 \
-    libvpx6 \
+    libvpx-dev \
     && rm -rf /var/lib/apt/lists/*
+
 
 # Copy requirements first to use Docker cache for deps
 COPY requirements.txt requirements.txt
