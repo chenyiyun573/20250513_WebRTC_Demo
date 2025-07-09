@@ -1,27 +1,19 @@
-FROM python:3.9-slim
+FROM python:3.11-slim
+
+# runtime deps only
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install system dependencies for aiortc (libopus, libvpx)
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    libsrtp2-dev \
-    libopus0 \
-    libvpx-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-
-# Copy requirements first to use Docker cache for deps
-COPY requirements.txt requirements.txt
-
-# Install python dependencies
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the app code
-COPY . .
+COPY relay.py .
 
-# Expose ports
-EXPOSE 8080/tcp
-EXPOSE 50000-50050/udp
+# if you use cert.pem/key.pem for TLS, copy them too:
+# COPY cert.pem key.pem ./
 
-CMD ["python", "server.py"]
+EXPOSE 8765/tcp
+CMD ["python", "relay.py"]

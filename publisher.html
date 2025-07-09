@@ -1,29 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>WebRTC Publisher</title>
-    <style>
-        body { font-family: sans-serif; margin: 20px; background-color: #f0f0f0; }
-        video { border: 1px solid black; background-color: #333; margin-bottom: 10px; }
-        #localVideo { width: 320px; height: 240px; }
-        button { padding: 10px 15px; margin-right: 10px; cursor: pointer; }
-        .container { background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    </style>
+<meta charset="utf-8">
+<title>Camera Publisher</title>
+<style>
+body { font-family: sans-serif; text-align: center; margin-top: 2rem; }
+video { border: 1px solid #444; width: 320px; height: 240px; background:#000 }
+button { padding: 0.6rem 1rem; margin-top: 1rem; }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>WebRTC Stream Publisher (Windows Laptop)</h1>
-        <p>Captures camera/microphone and sends to server.</p>
-        <video id="localVideo" autoplay muted playsinline></video><br/>
-        <button id="startButton">Start Publishing</button>
-        <button id="stopButton">Stop Publishing</button>
-        <p>Status: <span id="status">Idle</span></p>
-    </div>
-    <script src="/client.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            init('publisher');
-        });
-    </script>
+<h2>Camera Publisher</h2>
+
+<video id="preview" playsinline autoplay muted></video><br>
+<button id="start">Start publishing</button>
+
+<script>
+const WS_URL =
+  (location.protocol === "https:" ? "wss://" : "ws://") +
+  location.hostname + ":8765/pub";
+
+document.getElementById("start").onclick = async () => {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: true, audio: true
+  });
+  document.getElementById("preview").srcObject = stream;
+
+  const ws  = new WebSocket(WS_URL);
+  ws.binaryType = "arraybuffer";
+
+  const rec = new MediaRecorder(
+      stream, {mimeType: "video/webm;codecs=vp8,opus"});
+
+  rec.ondataavailable = e => {
+    if (e.data.size && ws.readyState === WebSocket.OPEN) ws.send(e.data);
+  };
+  rec.start(300);                       // 300 ms chunks ≈ sub‑second delay
+};
+</script>
 </body>
 </html>

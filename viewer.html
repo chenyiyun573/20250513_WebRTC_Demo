@@ -1,29 +1,43 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>WebRTC Viewer</title>
-    <style>
-        body { font-family: sans-serif; margin: 20px; background-color: #e8f0fe; }
-        video { border: 1px solid black; background-color: #333; margin-bottom: 10px; }
-        #remoteVideo { width: 640px; height: 480px; }
-        button { padding: 10px 15px; margin-right: 10px; cursor: pointer; }
-        .container { background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    </style>
+<meta charset="utf-8">
+<title>Live Viewer</title>
+<style>
+body { font-family: sans-serif; text-align: center; margin-top: 2rem; }
+video { border: 1px solid #444; width: 640px; height: 480px; background:#000 }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>WebRTC Stream Viewer (Mac)</h1>
-        <p>Receives and displays the stream from the server.</p>
-        <video id="remoteVideo" autoplay playsinline></video><br/>
-        <button id="startButton">Start Viewing</button>
-        <button id="stopButton">Stop Viewing</button>
-        <p>Status: <span id="status">Idle</span></p>
-    </div>
-    <script src="/client.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            init('subscriber');
-        });
-    </script>
+<h2>Live Stream Viewer</h2>
+
+<video id="remote" playsinline autoplay controls></video>
+
+<script>
+const WS_URL =
+  (location.protocol === "https:" ? "wss://" : "ws://") +
+  location.hostname + ":8765/sub";
+
+const mediaSource = new MediaSource();
+document.getElementById("remote").src = URL.createObjectURL(mediaSource);
+
+mediaSource.addEventListener("sourceopen", () => {
+  const mime = 'video/webm;codecs="vp8,opus"';
+  const sb   = mediaSource.addSourceBuffer(mime);
+  const q    = [];
+
+  const feed = buf => {
+    if (sb.updating || q.length) q.push(buf);
+    else sb.appendBuffer(buf);
+  };
+  sb.addEventListener("updateend", () => {
+    if (q.length) feed(q.shift());
+  });
+
+  const ws = new WebSocket(WS_URL);
+  ws.binaryType = "arraybuffer";
+  ws.onmessage = ({data}) => feed(new Uint8Array(data));
+});
+</script>
 </body>
 </html>

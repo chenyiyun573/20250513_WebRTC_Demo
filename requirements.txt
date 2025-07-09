@@ -1,2 +1,1 @@
-aiortc>=1.7.0
-aiohttp
+websockets==12.0

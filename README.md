@@ -8,6 +8,14 @@ Changed the dockerfile to repack image.
 
 on the ubuntu server:
 ```
+docker build -t webrtc-server-demo .
 
 
 ```
+
+20250709 0853 PT
+This version of code is saved as 1.0.2
+Since WebRTC has a lot of problems unsolved and not easy to debug. 
+
+I plan to use another simpler method. 
+
