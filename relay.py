@@ -1,60 +1,67 @@
-# stream-relay/relay.py
-import asyncio, ssl, logging, pathlib, websockets, http.server, socketserver
+import asyncio, ssl, logging, pathlib, websockets
+from websockets.legacy.server import serve     #  << use legacy protocol
 from collections import defaultdict
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+from threading import Thread
 
-logging.basicConfig(level=logging.INFO)
-CLIENTS = defaultdict(set)            # {"pub": {ws}, "sub": {ws}}
+logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(message)s")
 
-# ---------- WebSocket relay -------------------------------------------------
-async def ws_handler(ws):
+ROOT = pathlib.Path(__file__).parent           # for static files
+CERT = ROOT / "cert.pem"
+KEY  = ROOT / "key.pem"
+
+CLIENTS = defaultdict(set)                     # {"pub": {ws}, "sub": {ws}}
+
+# ---------- WebSocket relay --------------------------------------------------
+async def ws_handler(ws):                      # single arg — legacy protocol
     role = "pub" if ws.path == "/pub" else "sub"
     CLIENTS[role].add(ws)
-    logging.info("%s connected (%s)", ws.remote_address, role)
+    logging.info("%s CONNECTED as %s", ws.remote_address, role)
 
     try:
-        async for msg in ws:
+        async for chunk in ws:                 # binary WebM chunks
             if role == "pub":
                 dead = []
                 for v in CLIENTS["sub"]:
                     try:
-                        await v.send(msg)
+                        await v.send(chunk)
                     except websockets.ConnectionClosed:
                         dead.append(v)
                 for d in dead:
                     CLIENTS["sub"].discard(d)
     finally:
         CLIENTS[role].discard(ws)
-        logging.info("%s left", ws.remote_address)
+        logging.info("%s DISCONNECTED", ws.remote_address)
 
 
-# ---------- HTTPS static file server ----------------------------------------
-class TLSHTTPServer(socketserver.TCPServer):
-    allow_reuse_address = True
+# ---------- HTTPS static file server -----------------------------------------
+def run_https_server():
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx.load_cert_chain(CERT, KEY)
 
-def start_https(loop, ssl_ctx):
-    handler = http.server.SimpleHTTPRequestHandler
-    # Serve files from /app (where publisher.html sits)
-    httpd = TLSHTTPServer(("", 8443), handler)
-    httpd.socket = ssl_ctx.wrap_socket(httpd.socket, server_side=True)
-    loop.run_in_executor(None, httpd.serve_forever)
+    class Handler(SimpleHTTPRequestHandler):
+        def log_message(self, fmt, *args):
+            logging.info("%s - - %s", self.client_address[0], fmt % args)
+
+    httpd = ThreadingHTTPServer(("", 8443), Handler)
+    httpd.socket = ctx.wrap_socket(httpd.socket, server_side=True)
     logging.info("HTTPS static server on :8443")
+    httpd.serve_forever()
 
-# ---------- Main ------------------------------------------------------------
+
 def main():
-    ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-    ssl_ctx.load_cert_chain("cert.pem", "key.pem")
+    # start static HTTPS site in a background thread
+    Thread(target=run_https_server, daemon=True).start()
 
-    async def run_servers():
-        # 1. start HTTPS static server in thread
-        loop = asyncio.get_running_loop()
-        start_https(loop, ssl_ctx)
-        # 2. start WSS relay
-        await websockets.serve(
-            ws_handler, "", 8765, ssl=ssl_ctx, max_size=2**20)
-        logging.info("WSS relay on :8765")
-        await asyncio.Future()   # run forever
+    # WSS relay
+    ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ssl_ctx.load_cert_chain(CERT, KEY)
 
-    asyncio.run(run_servers())
+    loop = asyncio.get_event_loop()
+    wssrv = serve(ws_handler, "", 8765, ssl=ssl_ctx, max_size=2 ** 20)
+    loop.run_until_complete(wssrv)
+    logging.info("WSS relay on :8765")
+    loop.run_forever()
 
 
 if __name__ == "__main__":

@@ -1,11 +1,8 @@
 FROM python:3.11-slim
 
 WORKDIR /app
+COPY . .
 
-# Copy app files and certs
-COPY relay.py publisher.html viewer.html cert.pem key.pem ./
-
-RUN pip install --no-cache-dir websockets
-
+RUN pip install --no-cache-dir websockets==12.*  # or any >=12
 EXPOSE 8443 8765
 CMD ["python", "relay.py"]
