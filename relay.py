@@ -6,8 +6,8 @@ logging.basicConfig(level=logging.INFO)
 CLIENTS = defaultdict(set)            # {"pub": {ws}, "sub": {ws}}
 
 # ---------- WebSocket relay -------------------------------------------------
-async def ws_handler(ws, path):
-    role = "pub" if path == "/pub" else "sub"
+async def ws_handler(ws):
+    role = "pub" if ws.path == "/pub" else "sub"
     CLIENTS[role].add(ws)
     logging.info("%s connected (%s)", ws.remote_address, role)
 
@@ -25,6 +25,7 @@ async def ws_handler(ws, path):
     finally:
         CLIENTS[role].discard(ws)
         logging.info("%s left", ws.remote_address)
+
 
 # ---------- HTTPS static file server ----------------------------------------
 class TLSHTTPServer(socketserver.TCPServer):
