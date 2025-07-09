@@ -1,19 +1,11 @@
+# stream-relay/Dockerfile
 FROM python:3.11-slim
 
-# runtime deps only
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
+COPY relay.py publisher.html viewer.html cert.pem key.pem ./
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# lightweight deps only
+RUN pip install --no-cache-dir websockets
 
-COPY relay.py .
-
-# if you use cert.pem/key.pem for TLS, copy them too:
-# COPY cert.pem key.pem ./
-
-EXPOSE 8765/tcp
+EXPOSE 8765 8443          # 8765 = WSS, 8443 = HTTPS for static files
 CMD ["python", "relay.py"]
