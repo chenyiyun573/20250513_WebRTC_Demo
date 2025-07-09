@@ -43,15 +43,18 @@ def main():
     ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
     ssl_ctx.load_cert_chain("cert.pem", "key.pem")
 
-    loop = asyncio.get_event_loop()
-    # 1‑ start HTTPS for static files
-    start_https(loop, ssl_ctx)
-    # 2‑ start WSS relay (max chunk 1 MB)
-    wssrv = websockets.serve(
-        ws_handler, "", 8765, ssl=ssl_ctx, max_size=2**20)
-    loop.run_until_complete(wssrv)
-    logging.info("WSS relay on :8765")
-    loop.run_forever()
+    async def run_servers():
+        # 1. start HTTPS static server in thread
+        loop = asyncio.get_running_loop()
+        start_https(loop, ssl_ctx)
+        # 2. start WSS relay
+        await websockets.serve(
+            ws_handler, "", 8765, ssl=ssl_ctx, max_size=2**20)
+        logging.info("WSS relay on :8765")
+        await asyncio.Future()   # run forever
+
+    asyncio.run(run_servers())
+
 
 if __name__ == "__main__":
     main()
