@@ -28,9 +28,12 @@ async def handler(ws, path):
         logging.info("%s left", ws.remote_address)
 
 def main():
-    ssl_ctx = None            # comment‑in for HTTPS/WSS
+    # ssl_ctx = None            # comment‑in for HTTPS/WSS
     # ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
     # ssl_ctx.load_cert_chain("cert.pem", "key.pem")
+    ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+    ssl_ctx.load_cert_chain("cert.pem", "key.pem")
+
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(
